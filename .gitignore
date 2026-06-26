@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+
+# Prisma
+apps/api/prisma/*.db
+
+# Audio files (dev)
+uploads/
+*.mp3
+
+# Docker volumes (local dev)
+/data/
+.vercel
+
+# npm lock file (project uses pnpm)
+package-lock.json

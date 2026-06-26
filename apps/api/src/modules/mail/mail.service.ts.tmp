@@ -1,0 +1,142 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+
+@Injectable()
+export class MailService {
+    private readonly logger = new Logger(MailService.name);
+    private readonly transporter: nodemailer.Transporter;
+    private readonly frontendUrl: string;
+    private readonly fromEmail: string;
+
+    constructor(private readonly configService: ConfigService) {
+        this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+        this.fromEmail = this.configService.get<string>('SMTP_USER', 'hello@inboxfm.co');
+
+        this.transporter = nodemailer.createTransport({
+            host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
+            port: this.configService.get<number>('SMTP_PORT', 587),
+            secure: false,
+            auth: {
+                user: this.configService.get<string>('SMTP_USER'),
+                pass: this.configService.get<string>('SMTP_PASS'),
+            },
+        });
+    }
+
+    private getBaseTemplate(content: string, preheader: string = ''): string {
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox FM</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #F9FAFB; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; }
+        .wrapper { width: 100%; border-collapse: collapse; background-color: #F9FAFB; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #E5E7EB; }
+        .header { background: linear-gradient(135deg, #6D28D9 0%, #4F46E5 100%); padding: 40px 0; text-align: center; }
+        .logo { color: #FFFFFF; font-size: 28px; font-weight: 900; letter-spacing: -0.025em; text-decoration: none; }
+        .logo span { font-style: italic; opacity: 0.8; }
+        .content { padding: 48px; line-height: 1.6; }
+        .footer { padding: 32px; text-align: center; color: #6B7280; font-size: 14px; background-color: #F9FAFB; }
+        .button { display: inline-block; background-color: #6D28D9; color: #FFFFFF !important; padding: 16px 32px; border-radius: 12px; font-weight: 700; text-decoration: none; margin-top: 24px; box-shadow: 0 10px 15px -3px rgba(109, 40, 217, 0.3); }
+        h1 { font-size: 24px; font-weight: 800; margin-top: 0; color: #111827; }
+        p { margin-bottom: 20px; font-size: 16px; color: #4B5563; }
+        .divider { height: 1px; background-color: #E5E7EB; margin: 32px 0; }
+        .preheader { display: none; max-height: 0px; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <span class="preheader">${preheader}</span>
+    <table class="wrapper" width="100%">
+        <tr>
+            <td>
+                <div class="container">
+                    <div class="header">
+                        <a href="${this.frontendUrl}" class="logo">INBOX<span>FM</span></a>
+                    </div>
+                    <div class="content">
+                        ${content}
+                    </div>
+                    <div class="footer">
+                        <p>© ${new Date().getFullYear()} Inbox FM. All rights reserved.</p>
+                        <p>Listen first. Open later. ☕</p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        `;
+    }
+
+    async sendWelcomeEmail(to: string, name: string): Promise<void> {
+        const content = `
+            <h1>Welcome to the club, ${name || 'there'}! 🎧</h1>
+            <p>You've officially unlocked a new way to consume your inbox. No more drowning in emails – just plug in your headphones and listen to your personalised AI morning brief.</p>
+            <p>Your first briefing is already waiting for you in your dashboard.</p>
+            <a href="${this.frontendUrl}/dashboard" class="button">Go to Dashboard</a>
+            <div class="divider"></div>
+            <p><strong>Next steps:</strong><br>
+            • Connect your Gmail account (if you haven't already)<br>
+            • Set your preferred briefing time<br>
+            • Enjoy your coffee while we do the reading.</p>
+        `;
+        
+        await this.sendMail(to, 'Welcome to Inbox FM 🎧', content, 'Your premium audio briefing experience starts here.');
+    }
+
+    async sendLoginAlert(to: string, device: string = 'New Device'): Promise<void> {
+        const content = `
+            <h1>New sign-in detected 🔐</h1>
+            <p>This is a quick security alert to let you know that your Inbox FM account was just accessed from a ${device}.</p>
+            <p>If this was you, you can safely ignore this email. If not, please reset your password immediately.</p>
+            <a href="${this.frontendUrl}/profile" class="button">Check Account Settings</a>
+        `;
+        
+        await this.sendMail(to, 'Security Alert: New Login 🔐', content, 'A new login was detected on your account.');
+    }
+
+    async sendPasswordReset(to: string, token: string): Promise<void> {
+        const resetUrl = `${this.frontendUrl}/reset-password?token=${token}`;
+        const content = `
+            <h1>Reset your password? 🔑</h1>
+            <p>We received a request to reset the password for your Inbox FM account.</p>
+            <p>Click the button below to choose a new password. This link will expire in 1 hour.</p>
+            <a href="${resetUrl}" class="button">Reset Password</a>
+            <div class="divider"></div>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+        `;
+        
+        await this.sendMail(to, 'Reset your Inbox FM password 🔑', content, 'Click here to reset your password.');
+    }
+
+    async sendBroadcast(to: string, subject: string, message: string): Promise<void> {
+        const content = `
+            <h1>Message from Inbox FM Team 📢</h1>
+            <p>${message.replace(/\n/g, '<br>')}</p>
+            <a href="${this.frontendUrl}/dashboard" class="button">Open App</a>
+        `;
+        
+        await this.sendMail(to, subject, content, 'Important update from the team.');
+    }
+
+    private async sendMail(to: string, subject: string, content: string, preheader: string): Promise<void> {
+        try {
+            const html = this.getBaseTemplate(content, preheader);
+            await this.transporter.sendMail({
+                from: `"Inbox FM Team" <${this.fromEmail}>`,
+                to,
+                subject,
+                html,
+            });
+            this.logger.log(`Email sent to ${to}: ${subject}`);
+        } catch (error) {
+            this.logger.error(`Failed to send email to ${to}: ${error.message}`);
+            throw error;
+        }
+    }
+}

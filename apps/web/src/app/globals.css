@@ -1,0 +1,306 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-serif: var(--font-serif);
+  --font-archivo-black: var(--font-archivo-black);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-brand-orange: var(--brand-orange);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #FAF6F0;                         /* Warm cream page background */
+  --foreground: #171717;
+  --heading: #000000;
+  --card: #FAF6F0;                               /* Warm cream card background */
+  --card-foreground: #171717;
+  --popover: #FAF6F0;
+  --popover-foreground: #171717;
+  --brand-orange: #FF6A00;
+  --primary: #FF6A00;
+  --primary-foreground: #000000;
+  --secondary: #FAF6F0;
+  --muted: #FAFAFA;
+  --muted-foreground: #737373;
+  --accent: #FAF6F0;
+  --accent-foreground: #000000;
+  --destructive: #EF4444;
+  --border: #000000;                             /* Solid black borders */
+  --input: #000000;
+  --ring: #FF6A00;
+  --chart-1: #FF6A00;
+  --chart-2: #F0AB68;
+  --chart-3: #171717;
+  --chart-4: #808080;
+  --chart-5: #A0A0A0;
+  --sidebar: #FAF6F0;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #FF6A00;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FAF6F0;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #FF6A00;
+
+  /* Theme-aware spotlight gradients - light mode is extremely subtle */
+  --spotlight-primary: rgba(255, 106, 0, 0.01);
+  --spotlight-secondary: rgba(240, 171, 104, 0.005);
+  --spotlight-tertiary: rgba(255, 106, 0, 0.003);
+
+  /* Theme-aware glass containers - solid neo-brutalist fallback */
+  --glass-bg: #FAF6F0;
+  --glass-border: #000000;
+  --glass-shadow: 4px 4px 0px 0px #000000;
+
+  /* Emil's custom easing functions */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Transition tokens */
+  --ds-transition-page: 0.45s cubic-bezier(0.23, 1, 0.32, 1);
+  --ds-transition-micro: 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* ============================================================
+   * Brand Design System Tokens
+   * Tightened for sharper neo-brutalist geometry
+   * ============================================================ */
+  --ds-radius-card: 1rem;
+  --ds-radius-inner: 0.75rem;
+  --ds-radius-pill: 9999px;
+  --ds-radius-btn: 0.5rem;
+
+  /* Brand shadow system — premium flat offset shadows */
+  --ds-border-brutalist: #000000;
+  --ds-shadow-card: 4px 4px 0px 0px #000000;
+  --ds-shadow-primary: 3px 3px 0px 0px #000000;
+  --ds-shadow-hover: 6px 6px 0px 0px #000000;
+}
+
+.dark {
+  --background: #050505;                         /* Near Black Page Background */
+  --foreground: #B8B8B8;                         /* Premium Gray Body Text */
+  --heading: #E5D8C9;                            /* Premium Warm Ivory Headings */
+  --card: #161519;                               /* Dark grey card bg matching integrations */
+  --card-foreground: #B8B8B8;
+  --popover: #161519;
+  --popover-foreground: #B8B8B8;
+  --primary: #FF6A00;                            /* Primary Orange for main CTAs */
+  --primary-foreground: #050505;                 /* Near Black text on orange */
+  --secondary: #111111;                          /* Surface Gray (#111111) for Secondary CTAs */
+  --secondary-foreground: #E5D8C9;               /* Ivory text on secondary button */
+  --muted: #111111;                              /* Surface Gray */
+  --muted-foreground: #707070;                   /* Muted Gray Text */
+  --accent: #111111;
+  --accent-foreground: #E5D8C9;
+  --destructive: oklch(0.55 0.22 25);
+  --border: #27272A;                             /* Zinc-800 borders in dark mode */
+  --input: #27272A;
+  --ring: #FF6A00;
+  --sidebar: #0B0B0B;
+  --sidebar-foreground: #B8B8B8;
+  --sidebar-primary: #FF6A00;
+  --sidebar-primary-foreground: #050505;
+  --sidebar-accent: #111111;
+  --sidebar-accent-foreground: #E5D8C9;
+  --sidebar-border: #27272A;
+  --sidebar-ring: #FF6A00;
+
+  /* Theme-aware expensive orange spotlight whispers */
+  --spotlight-primary: rgba(255, 106, 0, 0.03);
+  --spotlight-secondary: rgba(240, 171, 104, 0.015);
+  --spotlight-tertiary: rgba(255, 106, 0, 0.01);
+
+  /* Theme-aware dashboard glass containers - dark mode neo-brutalist fallback */
+  --glass-bg: #161519;
+  --glass-border: #27272A;
+  --glass-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 0.06);
+
+  /* Brand shadow system in dark mode — premium flat offset shadows in zinc for softer contrast */
+  --ds-border-brutalist: #27272A;
+  --ds-shadow-card: 4px 4px 0px 0px rgba(0, 0, 0, 0.4);
+  --ds-shadow-primary: 3px 3px 0px 0px #27272A;
+  --ds-shadow-hover: 6px 6px 0px 0px #27272A;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: none;        /* Firefox */
+    -ms-overflow-style: none;     /* IE/Edge */
+  }
+  html::-webkit-scrollbar {
+    display: none;                /* Chrome/Safari */
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground;
+    scrollbar-width: none;        /* Firefox */
+    -ms-overflow-style: none;     /* IE/Edge */
+  }
+  body::-webkit-scrollbar {
+    display: none;                /* Chrome/Safari */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--heading);
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-none {
+    scrollbar-width: none;        /* Firefox */
+    -ms-overflow-style: none;     /* IE/Edge */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;                /* Chrome/Safari */
+  }
+
+  /* Dynamic theme-aware spotlight utility */
+  .spotlight-bg {
+    position: relative;
+    background-color: var(--background);
+    background-image: 
+      radial-gradient(circle at 50% -20%, var(--spotlight-primary) 0%, transparent 60%),
+      radial-gradient(circle at 10% 40%, var(--spotlight-secondary) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, var(--spotlight-tertiary) 0%, transparent 50%);
+  }
+
+  .grain-bg {
+    position: relative;
+  }
+
+  .grain-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.015;
+    pointer-events: none;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+
+  /* Fully theme-aware glass container */
+  .glass {
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    will-change: transform;
+  }
+
+  /* Disable expensive animations for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .glass {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  .text-glow {
+    text-shadow: 0 0 16px rgba(255, 106, 0, 0.15);
+  }
+
+  /* Transition timings utility mapping Emil's bezier rules */
+  .transition-spring-normal {
+    transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .transition-spring-snappy {
+    transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), opacity 250ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+
+@keyframes waveform-scale {
+  0%, 100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-waveform-bar {
+  animation: waveform-scale 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes ribbon-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ribbon-marquee {
+  animation: ribbon-marquee 20s linear infinite;
+  will-change: transform;
+}

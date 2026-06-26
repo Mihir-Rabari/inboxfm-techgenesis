@@ -1,0 +1,534 @@
+// Prisma schema for Inbox FM
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Voice persona options for audio briefing style
+enum VoicePersona {
+  NEWSROOM   // Professional anchor tone
+  FRIEND     // Casual, conversational
+  SPEEDSTER  // Fast-paced, action-oriented
+}
+
+// Brief processing status
+enum BriefStatus {
+  PENDING
+  FETCHING
+  PROCESSING
+  GENERATING_AUDIO
+  DELIVERING
+  DELIVERED
+  FAILED
+}
+
+// Status of user action cards derived from a brief
+// (e.g. calendar event suggestions)
+enum BriefActionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Email categories for smart grouping
+enum EmailCategory {
+  URGENT
+  ACTION_REQUIRED
+  DEADLINES
+  MEETINGS
+  IMPORTANT
+  PERSONAL
+  NEWSLETTERS
+  PROMOTIONS
+  NOISE
+}
+
+// Sender priority levels
+enum SenderPriority {
+  CRITICAL  // Boss, VIPs
+  HIGH      // Important contacts
+  NORMAL    // Regular
+  LOW       // Newsletters
+  IGNORE    // Spam-like
+}
+
+
+
+// Waitlist status
+enum WaitlistStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+// Waitlist entries
+model Waitlist {
+  id          String         @id @default(uuid())
+  email       String         @unique
+  name        String?
+  role        String?
+  emailVolume String?        @map("email_volume")
+  biggestPain String?        @map("biggest_pain")
+  whyInboxfm  String?        @map("why_inboxfm")
+  notes       String?        @db.Text
+  status      WaitlistStatus @default(PENDING)
+  accessCode  String?        @unique
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status])
+  @@index([email])
+}
+
+// User account
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  password     String   // Hashed with bcrypt
+  picture      String?
+
+  // Google OAuth (optional, connected post-signup)
+  googleId     String?  @unique
+  accessToken  String?  @db.Text // Encrypted
+  refreshToken String?  @db.Text // Encrypted
+  tokenExpiry  DateTime?
+  gmailConnected Boolean @default(false)
+  googleConnectedAt DateTime?
+  googleWarningSent Boolean @default(false)
+
+  // Password reset
+  resetToken       String?   @unique
+  resetTokenExpires DateTime?
+  styleProfile  String?     @db.Text
+
+
+  // Preferences (legacy - moved to SummarySchedule)
+  timezone      String       @default("Asia/Kolkata")
+  isActive      Boolean      @default(true)
+  onboardingComplete Boolean @default(false)
+  onboardingStep     Int     @default(0)
+
+  // Email Preferences
+  subscribePromo      Boolean      @default(true)
+  subscribeAlerts     Boolean      @default(true)
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastActiveAt DateTime @default(now())
+
+  // Relations
+  dailyBriefs       DailyBrief[]
+  briefActions      BriefAction[]
+  actionItems       ActionItem[]
+  senderPreferences SenderPreference[]
+  summarySchedules  SummarySchedule[]
+  briefingStyles    BriefingStyle[]
+  admin             Admin?
+  supportTickets    SupportTicket[]
+  feedback          Feedback[]
+  pushSubscriptions PushSubscription[]
+  userIntegrations  UserIntegration[]
+  emailEmbeddings   EmailEmbedding[]
+
+  @@index([email])
+  @@index([googleId])
+}
+
+// Admin users
+model Admin {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Push notification subscriptions
+model PushSubscription {
+  id           String   @id @default(uuid())
+  userId       String
+  endpoint     String   @unique
+  p256dh       String   @db.Text
+  auth         String   @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+// Summary schedules (multiple per user)
+model SummarySchedule {
+  id           String       @id @default(uuid())
+  userId       String
+  name         String       // "Morning Summary", "Evening Catch-up", etc.
+  deliveryTime String       // "07:00", "18:00"
+  timezone     String       @default("Asia/Kolkata")
+  voicePersona VoicePersona @default(NEWSROOM)
+  customPrompt String?      @db.Text
+  isActive     Boolean      @default(true)
+  styleId      String?
+
+  // Timeframe for emails to include
+  emailsFrom   String       @default("last_delivery") // "last_delivery", "last_24h", "since_midnight"
+  includeGmail Boolean      @default(true)
+  includeOutlook Boolean    @default(true)
+
+  // Timestamps
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  style        BriefingStyle? @relation(fields: [styleId], references: [id], onDelete: SetNull)
+  dailyBriefs  DailyBrief[]
+
+  @@index([userId])
+  @@index([deliveryTime])
+}
+
+// Daily audio brief
+model DailyBrief {
+  id     String   @id @default(uuid())
+  userId String
+  date   DateTime @db.Date
+
+  // Relation to specific schedule (allows multiple briefs per day)
+  scheduleId      String?
+  summarySchedule SummarySchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  // Content
+  textSummary String @db.Text
+  scriptJson  Json   // ScriptSegment[]
+  audioUrl    String?
+  audioDuration Int? // seconds
+
+  // Metadata
+  emailsProcessed Int    @default(0)
+  categoryCounts  Json   @default("{}")
+  status          BriefStatus @default(PENDING)
+
+  // Processing info
+  processingTime Int?    // milliseconds
+  errorMessage   String? @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions         BriefAction[]
+  actionItems     ActionItem[]
+  emailEmbeddings EmailEmbedding[]
+
+  @@unique([userId, date, scheduleId])
+  @@index([userId, date])
+  @@index([status])
+}
+
+model BriefAction {
+  id          String            @id @default(uuid())
+  briefId     String
+  userId      String
+  sourceId    String
+
+  type        String? // meeting | event | reminder | task
+  title       String
+  details     String?           @db.Text
+  startsAt    DateTime
+  endsAt      DateTime?
+  allDay      Boolean           @default(false)
+  participants Json             @default("[]")
+  includeMeet Boolean           @default(false)
+  location    String?
+
+  status      BriefActionStatus @default(PENDING)
+  googleEventId  String?
+  googleEventUrl String?
+  meetLink       String?
+  errorMessage   String?        @db.Text
+  completedAt    DateTime?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  brief       DailyBrief        @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([briefId, sourceId])
+  @@index([userId, briefId, status])
+}
+
+// Sender preferences for priority scoring
+model SenderPreference {
+  id          String   @id @default(uuid())
+  userId      String
+  senderEmail String
+  senderName  String?
+
+  // Preferences
+  priority      SenderPriority @default(NORMAL)
+  alwaysInclude Boolean        @default(false)
+  neverInclude  Boolean        @default(false)
+
+  // Learning data
+  interactionCount Int      @default(0)
+  lastSeenAt       DateTime @default(now())
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, senderEmail])
+  @@index([userId])
+}
+
+// Support ticket categories
+enum TicketCategory {
+  BUG
+  FEATURE
+  BILLING
+  ACCOUNT
+  OTHER
+}
+
+// Support ticket status
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// Support ticket priority
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// Support tickets from users
+model SupportTicket {
+  id          String         @id @default(uuid())
+  userId      String?
+  email       String
+  subject     String
+  message     String         @db.Text
+  category    TicketCategory @default(OTHER)
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(NORMAL)
+  adminNotes  String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  resolvedAt  DateTime?
+
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([userId])
+}
+
+// User feedback and ratings
+model Feedback {
+  id          String   @id @default(uuid())
+  userId      String?
+  email       String
+  rating      Int      // 1-5 stars
+  message     String   @db.Text
+  page        String?  // Which page they were on
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([rating])
+  @@index([userId])
+}
+
+// Release notes for changelog and notifications
+model ReleaseNote {
+  id          String    @id @default(uuid())
+  version     String
+  title       String
+  slug        String?   @unique
+  description String?   @db.Text
+  content     String    @db.Text
+  changes     Json?     // Array of { category: string, description: string }
+  isPublished Boolean   @default(false)
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isPublished])
+  @@index([slug])
+}
+
+// Integration providers
+enum IntegrationProvider {
+  GMAIL
+  GOOGLE_CALENDAR
+  SLACK
+  NOTION
+  OUTLOOK
+  RSS_FEED
+  GITHUB
+}
+
+// Integration connection status  
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  PENDING
+}
+
+// User integrations (plugin connections)
+model UserIntegration {
+  id           String              @id @default(uuid())
+  userId       String
+  provider     IntegrationProvider
+  status       IntegrationStatus   @default(DISCONNECTED)
+  
+  // OAuth credentials (encrypted)
+  accessToken  String?             @db.Text
+  refreshToken String?             @db.Text
+  tokenExpiry  DateTime?
+  
+  // Provider-specific metadata (e.g. workspace ID for Slack, RSS feed URLs)
+  metadata     Json                @default("{}")
+  
+  // Timestamps
+  connectedAt  DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([provider])
+}
+
+// Per-email vector embeddings for stateful brief memory (pgvector)
+// The actual `embedding` column is vector(768) — added via raw SQL migration
+// since Prisma does not natively support pgvector column types.
+model EmailEmbedding {
+  id          String   @id @default(uuid())
+  userId      String
+  briefId     String
+  emailId     String   // Gmail message ID (RawEmail.id)
+  subject     String
+  fromEmail   String
+  category    String
+  priority    Int
+  miniSummary String   @db.Text
+  receivedAt  DateTime
+  createdAt   DateTime @default(now())
+  embedding   Unsupported("vector(768)")?
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brief DailyBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([briefId])
+  @@map("email_embeddings")
+}
+
+model ActionItem {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  briefId       String?
+  brief         DailyBrief?      @relation(fields: [briefId], references: [id], onDelete: SetNull)
+
+  // Core
+  type          ActionItemType
+  title         String
+  description   String?          @db.Text
+  links         String[]         @default([])
+  priority      Int              @default(50)  // 0-100
+  status        ActionItemStatus @default(PENDING)
+
+  // Source tracking
+  sourceType    String?          // "email" | "calendar" | "github" | "rss"
+  sourceId      String?          // Original email/event message ID
+  sourceSubject String?
+  sourceSender  String?
+  sourceUrl     String?          // Deep link to original item
+  sourcePreview String?          @db.Text
+
+  // Calendar fields
+  startsAt      DateTime?
+  endsAt        DateTime?
+  allDay        Boolean          @default(false)
+  participants  String[]
+  location      String?
+  includeMeet   Boolean          @default(false)
+
+  // Reply fields
+  replyIndicator Boolean         @default(false) // AI flagged this as needing a reply
+  suggestedReply String?         @db.Text        // Generated on-demand, cached
+  editedContent  String?         @db.Text
+
+  // Mail sending (Outlook only for now)
+  sentMailId     String?
+  sentAt         DateTime?
+
+  // Calendar sync
+  googleEventId  String?
+  googleEventUrl String?
+  meetLink       String?
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([userId, sourceId, type]) // Prevents duplicates from same source
+  @@index([userId, status])
+  @@index([userId, type])
+}
+
+enum ActionItemType {
+  MEETING
+  TASK
+  REPLY
+  FOLLOW_UP
+  REVIEW
+  APPROVAL
+}
+
+enum ActionItemStatus {
+  PENDING
+  APPROVED
+  IGNORED
+  COMPLETED
+  EDITED
+  SNOOZED
+}
+
+model BriefingStyle {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  prompt      String   @db.Text
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  schedules   SummarySchedule[]
+}
+

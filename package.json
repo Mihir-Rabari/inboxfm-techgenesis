@@ -1,0 +1,29 @@
+{
+  "name": "inbox-fm",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "dev:api": "pnpm --filter @inbox-fm/api dev",
+    "dev:web": "pnpm --filter @inbox-fm/web dev",
+    "build": "pnpm --workspace-concurrency 1 -r build",
+    "stop": "echo 'stop is managed by the process manager'",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @inbox-fm/api prisma:generate",
+    "db:migrate": "pnpm --filter @inbox-fm/api prisma:migrate",
+    "db:studio": "pnpm --filter @inbox-fm/api prisma:studio",
+    "sync:web-env": "grep -E '^(NEXT_PUBLIC_|SENTRY_DSN)' .env > apps/web/.env.local && echo 'Web env synced'",
+    "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:up:prod": "docker-compose -f docker-compose.prod.yml up -d",
+    "docker:down:prod": "docker-compose -f docker-compose.prod.yml down"
+  },
+  "devDependencies": {
+    "next": "16.1.4",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@10.28.1"
+}

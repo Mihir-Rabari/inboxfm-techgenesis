@@ -1,0 +1,14 @@
+{
+    "name": "@inbox-fm/shared",
+    "version": "0.0.1",
+    "private": true,
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "lint": "eslint src --ext .ts",
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3"
+    }
+}
