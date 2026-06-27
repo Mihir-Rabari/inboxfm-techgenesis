@@ -25,7 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import api from "@/lib/api";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 const STEPS = [
   {
@@ -36,12 +36,6 @@ const STEPS = [
   },
   {
     id: 2 as Step,
-    Icon: Key,
-    title: "Enter your access code",
-    subtitle: "Check your invitation email.",
-  },
-  {
-    id: 3 as Step,
     Icon: LockKey,
     title: "Secure your account",
     subtitle: "Choose a strong password.",
@@ -85,7 +79,7 @@ export default function SignupPage() {
 
   const next = () => {
     setDir(1);
-    setStep((s) => Math.min(s + 1, 3) as Step);
+    setStep((s) => Math.min(s + 1, 2) as Step);
   };
   const back = () => {
     setDir(-1);
@@ -123,11 +117,6 @@ export default function SignupPage() {
     }
   };
 
-  const onStep2 = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (accessCode) next();
-  };
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
@@ -136,18 +125,11 @@ export default function SignupPage() {
     }
     setIsLoading(true);
     try {
-      await signup({ email, password, name: name || undefined, accessCode });
+      await signup({ email, password, name: name || undefined });
       toast.success("Welcome to Inbox FM!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Please try again.";
-      if (msg.toLowerCase().includes("access code")) {
-        setDir(-1);
-        setStep(2);
-        setAccessCode("");
-        toast.error("Invalid access code", { description: msg });
-      } else {
-        toast.error("Signup failed", { description: msg });
-      }
+      toast.error("Signup failed", { description: msg });
     } finally {
       setIsLoading(false);
     }
@@ -236,7 +218,7 @@ export default function SignupPage() {
 
           {/* Connector lines between steps */}
           <div className="absolute left-[1.25rem] top-[2.75rem] flex flex-col gap-0 -z-10" style={{ height: "calc(100% - 2.5rem)" }}>
-            {[0, 1].map((i) => (
+            {[0].map((i) => (
               <motion.div
                 key={i}
                 animate={{ backgroundColor: step > i + 1 ? "#FF6A00" : "rgba(255,255,255,0.06)" }}
@@ -286,7 +268,7 @@ export default function SignupPage() {
 
           {/* Step progress bar */}
           <div className="flex items-center gap-2 mb-10">
-            {([1, 2, 3] as Step[]).map((s) => (
+            {([1, 2] as Step[]).map((s) => (
               <motion.div
                 key={s}
                 animate={{
@@ -302,7 +284,7 @@ export default function SignupPage() {
               />
             ))}
             <span className="ml-1 text-[10px] font-mono font-bold text-foreground/30 tabular-nums uppercase tracking-widest">
-              {step} / 3
+              {step} / 2
             </span>
           </div>
 
@@ -480,71 +462,10 @@ export default function SignupPage() {
                 </motion.div>
               )}
 
-            {/* ─ Step 2 — Approved: enter access code ─ */}
-            {step === 2 && checkStatus === "APPROVED" && (
+            {/* ─ Step 2 — Password ─ */}
+            {step === 2 && (
               <motion.form
-                key="f2-approved"
-                custom={dir}
-                variants={slide}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                onSubmit={onStep2}
-                className="space-y-4"
-              >
-                {/* Email recap */}
-                <div className="flex items-center gap-2.5 bg-white dark:bg-zinc-900/60 border-2 border-[var(--ds-border-brutalist)] rounded-[var(--ds-radius-inner)] px-4 py-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.06)]">
-                  <EnvelopeSimple size={14} className="text-muted-foreground/60 shrink-0" />
-                  <span className="text-sm text-foreground truncate font-semibold">{email}</span>
-                </div>
-
-                {/* Access code input */}
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-foreground/50">
-                    Access code
-                  </Label>
-                  <input
-                    type="text"
-                    placeholder="IFM-XXXXXXXX"
-                    value={accessCode}
-                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                    required
-                    autoFocus
-                    className="w-full h-14 bg-white dark:bg-zinc-900 border-2 border-[var(--ds-border-brutalist)] rounded-[var(--ds-radius-inner)] px-4 text-foreground placeholder:text-foreground/20 font-mono tracking-[0.3em] text-xl font-black text-center focus:outline-none focus:border-brand-orange shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.06)] transition-all duration-200 focus:shadow-[3px_3px_0px_0px_#FF6A00] focus:-translate-x-[1px] focus:-translate-y-[1px]"
-                  />
-                  <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wide">
-                    Check your inbox for an invitation email.{" "}
-                    <Link href="/waitlist" className="text-brand-orange hover:underline font-bold">
-                      No code?
-                    </Link>
-                  </p>
-                </div>
-
-                <div className="flex gap-2.5">
-                  <button
-                    type="button"
-                    onClick={back}
-                    className="w-12 h-12 shrink-0 rounded-[var(--ds-radius-inner)] border-2 border-[var(--ds-border-brutalist)] bg-white dark:bg-zinc-900 flex items-center justify-center text-foreground shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.06)] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 cursor-pointer"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                  <Button
-                    type="submit"
-                    disabled={!accessCode}
-                    size="brand"
-                    className="flex-1 h-12 gap-2"
-                  >
-                    Continue <ArrowRight size={17} weight="bold" />
-                  </Button>
-                </div>
-              </motion.form>
-            )}
-
-            {/* ─ Step 3 — Password ─ */}
-            {step === 3 && (
-              <motion.form
-                key="f3"
+                key="f2-password"
                 custom={dir}
                 variants={slide}
                 initial="enter"
@@ -554,14 +475,11 @@ export default function SignupPage() {
                 onSubmit={onSubmit}
                 className="space-y-4"
               >
-                {/* Email + access code recap */}
+                {/* Email recap */}
                 <div className="flex items-center gap-2.5 bg-white dark:bg-zinc-900/60 border-2 border-[var(--ds-border-brutalist)] rounded-[var(--ds-radius-inner)] px-4 py-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.06)]">
                   <EnvelopeSimple size={14} className="text-muted-foreground/60 shrink-0" />
                   <span className="text-sm text-foreground truncate flex-1 min-w-0 font-semibold">
                     {email}
-                  </span>
-                  <span className="text-[9px] font-mono text-brand-orange bg-brand-orange/10 border border-brand-orange/20 px-2 py-0.5 rounded-[var(--ds-radius-pill)] shrink-0 font-black uppercase tracking-wider">
-                    {accessCode}
                   </span>
                 </div>
 
