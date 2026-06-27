@@ -8,7 +8,7 @@
 </div>
 
 <p align="center">
-  <strong>"The open-source audio-first inbox. We turn cluttered emails into a daily morning podcast."</strong>
+  <strong>"The open-source audio-first inbox. We turn cluttered emails, calendars, GitHub updates, and RSS feeds into a daily morning podcast."</strong>
 </p>
 
 ---
@@ -44,30 +44,41 @@ flowchart TB
 
     subgraph Workers ["⚡ Async Queue Processing (BullMQ & Redis)"]
         RedisQ[("Redis BullMQ Queues")]
-        MailFetcher["Gmail Fetcher Job"]
+        MailFetcher["Gmail & Outlook Fetcher Job"]
+        GitHubFetcher["GitHub Sync Worker"]
+        RSSFetcher["RSS Feed Aggregator"]
         AISynth["Gemini Summarizer Job"]
         TTSWorker["Gemini TTS Generator Job"]
     end
 
     subgraph ExtServices ["🌐 External Gateways"]
         GoogleOAuth["Google OAuth & Gmail API"]
+        OutlookOAuth["Outlook Mail & Calendar API"]
+        GitHubAPI["GitHub Developer REST API"]
         GeminiAPI["Google Gemini API (AI Synthesis)"]
     end
 
     %% Connections
     WebDash <-->|HTTPS / REST| APIGateway
     AuthCtrl <-->|OAuth Tokens| GoogleOAuth
+    AuthCtrl <-->|OAuth Tokens| OutlookOAuth
+    AuthCtrl <-->|OAuth Tokens| GitHubAPI
     BriefCtrl -->|Read / Write Metadata| PrismaORM
     PrismaORM <--> PG
     
     %% Queue Jobs
     BriefCtrl -->|Enqueue Fetch/Process Request| RedisQ
     RedisQ <--> MailFetcher
+    RedisQ <--> GitHubFetcher
+    RedisQ <--> RSSFetcher
     RedisQ <--> AISynth
     RedisQ <--> TTSWorker
     
     %% Worker Operations
     MailFetcher -->|Pull raw emails| GoogleOAuth
+    MailFetcher -->|Pull Outlook mail| OutlookOAuth
+    GitHubFetcher -->|Pull commit/issue activity| GitHubAPI
+    RSSFetcher -->|Pull web feeds| RSSFetcher
     AISynth -->|Context Summarization| GeminiAPI
     TTSWorker -->|Generate voice briefs| GeminiAPI
     TTSWorker -->|Save MP3 files| S3
@@ -77,17 +88,23 @@ flowchart TB
 ```
 
 ### Architectural Highlights
+- **Cross-Source Aggregation**: Synthesizes updates from Gmail, Outlook Mail, Outlook Calendar, GitHub Commits/PRs/Issues, and your favorite RSS web feeds.
 - **Rate-Limit Safe Rotation**: Supports up to three distinct Gemini API keys, automatically rotating them to safeguard against API quota failures.
-- **Strict Decoupled Queues**: BullMQ offloads Gmail connection fetches, text summarization, and heavy audio synthesis tasks to background workers, ensuring 100ms API response times.
-- **Secure Encrypted Tokens**: Gmail connection OAuth refresh tokens are stored in the database encrypted via `AES-256-GCM` using custom hardware keys.
+- **Strict Decoupled Queues**: BullMQ offloads Gmail, Outlook, GitHub, and RSS fetches, text summarization, and heavy audio synthesis tasks to background workers, ensuring 100ms API response times.
+- **Secure Encrypted Tokens**: Connection OAuth refresh tokens (Google, Microsoft Outlook, GitHub) are stored in the database encrypted via `AES-256-GCM` using custom hardware keys.
 
 ---
 
 ## ✨ Features Breakdown
 
 ### 📬 Smart Email Syncer
-- Integrates securely via Google OAuth.
+- Integrates securely via Google OAuth and Microsoft Outlook OAuth.
 - Fetches and classifies threads into categories: `URGENT`, `ACTION_REQUIRED`, `MEETINGS`, and `NEWSLETTERS`.
+
+### ⚡ Power Integrations
+* **📅 Outlook Calendar**: Sync meetings and get calendar conflict checks read during your briefs.
+* **🐙 GitHub Repository Sync**: Summarizes repository commit messages, pull requests, issue actions, and CI updates.
+* **📰 RSS News Feeds**: Incorporate headlines from your favorite websites, tech newsletters, and blogs directly into your morning newsletter.
 
 ### 🎙️ AI Spoken briefings
 - Conversational audio generation powered by Google Gemini TTS.
