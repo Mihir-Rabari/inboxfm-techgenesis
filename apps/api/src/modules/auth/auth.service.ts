@@ -70,27 +70,6 @@ export class AuthService {
       throw new ConflictException("An account with this email already exists");
     }
 
-    // Validate access code against waitlist
-    const waitlistEntry = await this.prisma.waitlist.findFirst({
-      where: {
-        email: data.email,
-        accessCode: data.accessCode,
-        status: "APPROVED",
-      },
-    });
-
-    if (!waitlistEntry) {
-      throw new BadRequestException(
-        "Invalid access code. Please check your invitation email or join the waitlist.",
-      );
-    }
-
-    // Consume the access code (prevent reuse)
-    await this.prisma.waitlist.update({
-      where: { id: waitlistEntry.id },
-      data: { accessCode: null },
-    });
-
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
@@ -238,24 +217,7 @@ export class AuthService {
       return user;
     }
 
-    // For new users via Google OAuth, verify the email is on the approved waitlist
-    const waitlistEntry = await this.prisma.waitlist.findFirst({
-      where: { email: profile.email, status: "APPROVED" },
-    });
-
-    if (!waitlistEntry) {
-      // Email not approved — return pending profile so the controller can
-      // redirect the user to enter their access code
-      return { pendingProfile: profile };
-    }
-
-    // Consume the access code if it exists
-    if (waitlistEntry.accessCode) {
-      await this.prisma.waitlist.update({
-        where: { id: waitlistEntry.id },
-        data: { accessCode: null },
-      });
-    }
+    // No waitlist/access code check required anymore, register directly
 
     // New user — create account via Google.
     // We store a random placeholder password that can never match a bcrypt hash,
